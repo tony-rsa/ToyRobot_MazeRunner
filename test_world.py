@@ -1,5 +1,8 @@
 import unittest
+from io import StringIO
+from unittest.mock import patch
 from world.text.world import *
+import robot
 
 class Mytest(unittest.TestCase):
 
@@ -21,3 +24,25 @@ class Mytest(unittest.TestCase):
         current_direction_index = 2
         result = update_position(steps, position_x, position_y, current_direction_index)
         self.assertEqual(result, (True, False, 0, -50))
+
+    @patch("sys.stdin", StringIO("Hal\nForward 10\nforward 5\nreplay\noff"))
+    def test_print_obstacles(self):
+        self.maxDiff = None
+        sys.stdout = StringIO()
+        obstacles.random.randint = lambda a, b: 1
+        robot.robot_start()
+        output = sys.stdout.getvalue()
+        self.assertEqual(output,"What do you want to name your robot? Hal: Hello kiddo!\nHal: Loaded obstacles.\nThere are some obstacles:\n- At position 1,1 (to 5,5)\nHal: What must I do next?  > Hal moved forward by 10 steps.\n > Hal now at position (0,10).\nHal: What must I do next?  > Hal moved forward by 5 steps.\n > Hal now at position (0,15).\nHal: What must I do next?  > Hal moved forward by 10 steps.\n > Hal now at position (0,25).\n > Hal moved forward by 5 steps.\n > Hal now at position (0,30).\n > Hal replayed 2 commands.\n > Hal now at position (0,30).\nHal: What must I do next? Hal: Shutting down..\n")
+
+    @patch("sys.stdin", StringIO("Hal\nForward 10\noff"))
+    def test_show_position(self):
+        self.maxDiff = None
+        sys.stdout = StringIO()
+        obstacles.random.randint = lambda a, b: 1
+        robot.robot_start()
+        output = sys.stdout.getvalue()
+        self.assertEqual(output,"What do you want to name your robot? Hal: Hello kiddo!\nHal: Loaded obstacles.\nThere are some obstacles:\n- At position 1,1 (to 5,5)\nHal: What must I do next?  > Hal moved forward by 10 steps.\n > Hal now at position (0,10).\nHal: What must I do next? Hal: Shutting down..\n")
+
+    def test_return_obst_import(self):
+        result = return_obst_import()
+        self.assertEqual(result != None, True)

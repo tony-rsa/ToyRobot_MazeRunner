@@ -1,6 +1,8 @@
 import sys
-from world import obstacles
+import turtle
+import maze_solver as mazern
 
+#imoprt text or turtle world
 turtle_flag = False
 if "turtle" in sys.argv:
     from world.turtle.world import *
@@ -10,15 +12,22 @@ else:
 
 
 # list of valid command names
-valid_commands = ['off', 'help', 'forward', 'back', 'right', 'left', 'sprint', 'replay', 'silent', 'reversed']
+valid_commands = ['off', 'help', 'forward', 'back', 'right', 'left', 'sprint',\
+                         'replay', 'silent', 'reversed', 'mazerun']
 
 # variables tracking position and direction
+global position_x, position_y, command_history
+command_history = []
+
 position_x = 0
 position_y = 0
 current_direction_index = 0
 
 
 def get_robot_name():
+    """
+        function gets robot name
+    """
     name = input("What do you want to name your robot? ")
     while len(name) == 0:
         name = input("What do you want to name your robot? ")
@@ -36,7 +45,6 @@ def get_command(robot_name):
     while len(command) == 0 or not valid_command(command):
         output(robot_name, "Sorry, I did not understand '"+command+"'.")
         command = input(prompt)
-
     return command.lower()
 
 
@@ -99,6 +107,13 @@ def valid_command(command):
     """
     check_commands = command.lower().split(" ")
 
+    mazern_commands = ["bottom", "top", "left", "right"]
+
+    if check_commands[0] == "mazerun" and len(check_commands) <= 2:
+        if len(check_commands) == 2:
+            return check_commands[1] in mazern_commands
+        return True
+
     if check_commands[0] == "replay":
         my_valid_command = list(filter(lambda x: x != "", list(map(checker_ ,check_commands))))
         if check_commands == my_valid_command:
@@ -110,6 +125,9 @@ def valid_command(command):
 
 
 def output(name, message):
+    """
+        function prints output message
+    """
     print(''+name+": "+message)
 
 
@@ -333,7 +351,15 @@ def handle_command(robot_name, command, command_history, silent):
     :return: `True` if the robot must continue after the command, or else `False` if robot must shutdown
     """
     global position_x, position_y
+
+    command_name = ""
+    arg = ""
+
+    direction = "top"
+    directions_dict = {"top": "U", "bottom": "D", "left": "L", "right" : "R"}
+    
     reverse = False
+
     if command.find("replay") != -1:
         if command.find("silent") != -1:
             silent = True
@@ -341,7 +367,12 @@ def handle_command(robot_name, command, command_history, silent):
             reverse = True
         (do_next, command_output, silent) = do_replay(robot_name, command_history, command, reverse, silent)
 
-    (command_name, arg) = split_command_input(command)
+    run_maze = False
+    mazern_commands = ""
+    if "mazerun" in command:
+        run_maze = True
+    else:
+        (command_name, arg) = split_command_input(command)
 
     if command_name == 'off':
         return False
@@ -357,6 +388,15 @@ def handle_command(robot_name, command, command_history, silent):
         (do_next, command_output) = do_left_turn(robot_name)
     elif command_name == 'sprint':
         (do_next, command_output) = do_sprint(robot_name, int(arg))
+    elif run_maze:
+        if " " in command:
+            mazern_commands = command.split(" ")
+            direction = mazern_commands[1]
+
+        print("> {} starting maze run..".format(robot_name))
+        solve_maze(directions_dict[direction])
+        do_next = True
+        command_output = "{}: I am at the {} edge.".format(robot_name, direction)
     
     if not silent:
         print(command_output)
@@ -366,27 +406,75 @@ def handle_command(robot_name, command, command_history, silent):
 
 
 def add_command_history(command, command_history):
+    """Function adds give command to the command history"""
     command_history.append(command)
     return command_history
 
 
-def robot_start():
-    """This is the entry point for starting my robot"""
+def turn_robot(command):
+    """
+        Function turns the robot in the direction of the give command
+        :param command: the direction you wish the robot to face
+    """
+    global current_direction_index, command_history, robot_name
 
-    global position_x, position_y, current_direction_index
+    directions_dict = {"U": 0, "R": 1, "D": 2, "L": 3}
+
+    while current_direction_index != directions_dict[command]:
+        handle_command(robot_name, "left", command_history, False)
+
+
+def run_maze(wayout, direction):
+    """
+        function moves the maze to a given edge
+        :param wayout: the way past the obstacles
+        :param direction: the heading the robot must go
+    """
+    global command_history, robot_name, position_x, position_y
+
+    for each in wayout:
+        command, count = each
+        turn_robot(command)
+        handle_command(robot_name, "forward "+str(count),\
+                                         command_history, False)
+
+    turn_robot(direction)
+    handle_command(robot_name, "forward 10", command_history, False)
+
+
+def solve_maze(direction):
+    """
+        Function auto sloves a given maze with obstacle from point (0,0) to given direction
+        :param direction: the edge you wish the robot to get to
+    """
+    global command_history, robot_name, position_x, position_y
+
+    obst_import = return_obst_import()
+
+    end_x, end_y = mazern.find_edge(direction, obst_import)
+    solution = mazern.search(direction, position_x, position_y,\
+                            end_x, end_y, obst_import)
+    wayout = mazern.backRoute(solution, end_x, end_y, position_x, position_y)
+
+    run_maze(wayout, direction)
+
+
+def robot_start():
+    """
+        This is the entry point for starting my robot
+    """
+    global position_x, position_y, current_direction_index, robot_name, command_history
     position_x = 0
     position_y = 0
     current_direction_index = 0
 
-    list_of_obstacles = obstacles.get_obstacles()
-
-    if turtle_flag:
-        setup_turtle(list_of_obstacles)
-
     robot_name = get_robot_name()
     output(robot_name, "Hello kiddo!")
+
+    if turtle_flag:
+        setup_turtle(robot_name)
     
-    print_obstacles(list_of_obstacles)
+    print_obstacles(robot_name)
 
     command_history = []
     command = get_command(robot_name)

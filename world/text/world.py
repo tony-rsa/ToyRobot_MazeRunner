@@ -1,10 +1,38 @@
-from world import obstacles
+import sys
+import import_helper
 
-def print_obstacles(list_of_obst):
+global obstacles, argv_value
+
+obstacles = import_helper.dynamic_import("maze.obstacles")
+argv_value = "obstacles"
+    
+if "text" in sys.argv and len(sys.argv) == 3:
+    argv_value = sys.argv[len(sys.argv)-1]
+    obstacles = import_helper.\
+                dynamic_import("maze."+argv_value)
+
+
+def return_obst_import():
+    """
+        function returns module
+        :returns obstacles: this module
+    """
+    global obstacles
+
+    return obstacles
+
+
+def print_obstacles(robot_name):
     """
         print all obstacles
         :param list_of_obst: list with obstacles
     """
+    global obstacles, argv_value
+
+    print(''+robot_name+': Loaded '+argv_value+'.')
+
+    list_of_obst = obstacles.get_obstacles()
+
     if len(list_of_obst) > 0:
         print("There are some obstacles:")
         for each in list_of_obst:
@@ -25,6 +53,8 @@ def is_position_allowed(new_x, new_y, position_x, position_y):
     :param new_y: the new/proposed y position
     :return: True if allowed, i.e. it falls in the allowed area, else False
     """
+    global obstacles
+    
     # area limit vars
     min_y, max_y = -200, 200
     min_x, max_x = -100, 100
